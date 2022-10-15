@@ -1,3 +1,4 @@
+scrappy
 fastapi==0.78.0
 pydantic==1.9.0
 pyparsing==3.0.9
@@ -6,6 +7,5 @@ requests==2.27.1
 tokenizers==0.12.1
 tqdm==4.64.0
 uvicorn==0.17.6
-scrappy
 vaderSentiment
 pandas
