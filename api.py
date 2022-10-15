@@ -5,6 +5,12 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from fastapi import FastAPI, Query, Body, Request,HTTPException
 import pandas as pd
 import requests
+from fastapi.middleware.cors import CORSMiddleware
+import time,os,sys
+import scrapy.crawler as crawler
+from scrapy.utils.log import configure_logging
+from multiprocessing import Process, Queue
+from twisted.internet import reactor
 
 api_key = "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"
 API_URL = "https://api-inference.huggingface.co/models/hassan4830/xlm-roberta-base-finetuned-urdu"
@@ -12,18 +18,52 @@ headers = {"Authorization": f"Bearer {api_key}"}
 
 app = FastAPI()
 
+origins = [
+    "http://localhost.tiangolo.com",
+    "https://localhost.tiangolo.com",
+    "http://localhost",
+    "http://localhost:80",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.get("/")
 def read_root():
     return {"Health_Check": "API is Working1"}
 
+def f(q,spider):
+    try:
+        settings = get_project_settings()
+        runner = crawler.CrawlerRunner(settings)
+        deferred = runner.crawl(spider)
+        deferred.addBoth(lambda _: reactor.stop())
+        reactor.run()
+        q.put(None)
+    except Exception as e:
+        q.put(e)
+def run_spider(spider):
+    q = Queue()
+    p = Process(target=f, args=(q,spider))
+    p.start()
+    result = q.get()
+    p.join()
+
+    if result is not None:
+        raise result
+
 
 @app.get("/scraper/{channel}")
 async def scrapper(channel:str):
-    settings = get_project_settings()
-    process = CrawlerProcess(settings)
-    process.crawl(channel)
-    process.start()
+    run_spider(channel)
+
     scrapped_data = pd.read_csv(f"{channel}.csv")
+    scrapped_data = scrapped_data.fillna('')
     return scrapped_data
 
 
