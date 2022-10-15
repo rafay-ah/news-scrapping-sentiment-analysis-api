@@ -1,4 +1,4 @@
-scrappy
+Scrappy
 fastapi==0.78.0
 pydantic==1.9.0
 pyparsing==3.0.9
