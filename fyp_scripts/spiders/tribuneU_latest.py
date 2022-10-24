@@ -34,7 +34,7 @@ class AryLatestSpider(scrapy.Spider):
 
     custom_settings = {
        'DOWNLOAD_DELAY': 0.8,
-        'FEEDS': {'tribuneUrdu_latest.csv': {'format': 'csv'}}
+        'FEEDS': {'tribuneU_latest.csv': {'format': 'csv'}}
     }
 
 

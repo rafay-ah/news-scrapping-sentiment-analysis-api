@@ -12,7 +12,7 @@ from scrapy.utils.log import configure_logging
 from multiprocessing import Process, Queue
 from twisted.internet import reactor
 
-api_key = "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"
+api_key = "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"
 API_URL = "https://api-inference.huggingface.co/models/hassan4830/xlm-roberta-base-finetuned-urdu"
 headers = {"Authorization": f"Bearer {api_key}"}
 
@@ -63,7 +63,7 @@ async def scrapper(channel:str):
     run_spider(channel)
 
     scrapped_data = pd.read_csv(f"{channel}.csv")
-    scrapped_data = scrapped_data.fillna('')
+    scrapped_data = scrapped_data.fillna(' ')
     return scrapped_data
 
 
@@ -117,6 +117,48 @@ def query(payload):
         return "negative"
     else:
         return "positive"
+
+
+@app.get("/get-results-urdu/{channel}")
+async def get_results_urdu(channel:str):
+    run_spider(channel)
+    scrapped_data = pd.read_csv(f"{channel}.csv")
+    scrapped_data = scrapped_data.fillna(' ')
+    sentiments = []
+    details = scrapped_data['Details']
+
+    for detail in details:
+        output = query({
+            "inputs": f"{detail}",
+        })
+        sentiments.append(output)
+
+    return sentiments
+
+
+@app.get("/get-results-english/{channel}")
+async def get_results_urdu(channel:str):
+    run_spider(channel)
+    scrapped_data = pd.read_csv(f"{channel}.csv")
+    scrapped_data = scrapped_data.fillna(' ')
+
+    sid_obj = SentimentIntensityAnalyzer()
+    sentiments = []
+    details = scrapped_data['Details']
+
+    for detail in details:
+        sentiment_dict = sid_obj.polarity_scores(detail)
+        if sentiment_dict['compound'] >= 0.05:
+            overall_sentiment = "Positive"
+
+        elif sentiment_dict['compound'] <= - 0.05:
+            overall_sentiment = "Negative"
+
+        else:
+            overall_sentiment = "Neutral"
+        sentiments.append(overall_sentiment)
+
+    return sentiments
 
 
 
