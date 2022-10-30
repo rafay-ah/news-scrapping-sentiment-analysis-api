@@ -11,6 +11,8 @@ import scrapy.crawler as crawler
 from scrapy.utils.log import configure_logging
 from multiprocessing import Process, Queue
 from twisted.internet import reactor
+import mysql.connector
+
 
 api_key = "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"
 API_URL = "https://api-inference.huggingface.co/models/hassan4830/xlm-roberta-base-finetuned-urdu"
@@ -33,6 +35,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+database = mysql.connector.connect(
+  host="localhost",
+  user="root",
+  password="",
+  database="fyp1"
+)
+
 @app.get("/")
 def read_root():
     return {"Health_Check": "API is Working1"}
@@ -47,6 +56,7 @@ def f(q,spider):
         q.put(None)
     except Exception as e:
         q.put(e)
+
 def run_spider(spider):
     q = Queue()
     p = Process(target=f, args=(q,spider))
@@ -133,11 +143,12 @@ async def get_results_urdu(channel:str):
         })
         sentiments.append(output)
 
+    insert_into_db(channel, details, sentiments)
     return sentiments
 
 
 @app.get("/get-results-english/{channel}")
-async def get_results_urdu(channel:str):
+async def get_results_english(channel:str):
     run_spider(channel)
     scrapped_data = pd.read_csv(f"{channel}.csv")
     scrapped_data = scrapped_data.fillna(' ')
@@ -158,7 +169,16 @@ async def get_results_urdu(channel:str):
             overall_sentiment = "Neutral"
         sentiments.append(overall_sentiment)
 
+    insert_into_db(channel,details,sentiments)
     return sentiments
 
 
+def insert_into_db(channel, scrapped_data, sentiments):
+    db_cursor = database.cursor()
+
+    sql = "INSERT INTO scraping_results (name, scraped_data, sentiments) VALUES (%s, %s, %s)"
+    val = (str(channel), str(scrapped_data), str(sentiments))
+    db_cursor.execute(sql, val)
+
+    database.commit()
 
