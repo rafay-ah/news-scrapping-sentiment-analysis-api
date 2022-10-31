@@ -177,8 +177,10 @@ def insert_into_db(channel, scrapped_data, sentiments):
     db_cursor = database.cursor()
 
     sql = "INSERT INTO scraping_results (name, scraped_data, sentiments) VALUES (%s, %s, %s)"
-    val = (str(channel), str(scrapped_data), str(sentiments))
-    db_cursor.execute(sql, val)
+
+    for index,news in enumerate(sentiments):
+        val = [channel, scrapped_data.values[index], news]
+        db_cursor.execute(sql, val)
 
     database.commit()
 
