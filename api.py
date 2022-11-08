@@ -1,4 +1,4 @@
-
+import torch
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -12,6 +12,11 @@ from scrapy.utils.log import configure_logging
 from multiprocessing import Process, Queue
 from twisted.internet import reactor
 import mysql.connector
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+tokenizer = AutoTokenizer.from_pretrained("hassan4830/xlm-roberta-base-finetuned-urdu")
+model = AutoModelForSequenceClassification.from_pretrained("hassan4830/xlm-roberta-base-finetuned-urdu")
+from transformers import TextClassificationPipeline
+pipe = TextClassificationPipeline(model=model, tokenizer=tokenizer, return_all_scores=True)
 
 
 api_key = "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"
@@ -138,10 +143,13 @@ async def get_results_urdu(channel:str):
     details = scrapped_data['Details']
 
     for detail in details:
-        output = query({
-            "inputs": f"{detail}",
-        })
-        sentiments.append(output)
+        output = pipe(detail)
+        identified_label = output[0][0].values()
+        if output[0][0]["score"] > output[0][1]["score"]:
+            sentiment =  "negative"
+        else:
+            sentiment =  "positive"
+        sentiments.append(sentiment)
 
     insert_into_db(channel, details, sentiments)
     return sentiments
