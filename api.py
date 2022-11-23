@@ -5,6 +5,8 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from fastapi import FastAPI, Query, Body, Request,HTTPException
 import pandas as pd
 import requests
+import joblib
+import pickle
 from fastapi.middleware.cors import CORSMiddleware
 import time,os,sys
 import scrapy.crawler as crawler
@@ -46,6 +48,12 @@ database = mysql.connector.connect(
   password="",
   database="fyp1"
 )
+
+with open('models/new_classi.pkl', 'rb') as f:
+    loaded_model = joblib.load(f)
+
+vectorizer = pickle.load(open('models/C2vector.pkl', 'rb'))
+
 
 @app.get("/")
 def read_root():
@@ -171,6 +179,33 @@ async def get_results_english(channel:str):
             overall_sentiment = "Positive"
 
         elif sentiment_dict['compound'] <= - 0.05:
+            overall_sentiment = "Negative"
+
+        else:
+            overall_sentiment = "Neutral"
+        sentiments.append(overall_sentiment)
+
+    insert_into_db(channel,details,sentiments)
+    return sentiments
+
+
+@app.get("/v2/get-results-english/{channel}")
+async def get_results_english(channel:str):
+    run_spider(channel)
+    scrapped_data = pd.read_csv(f"{channel}.csv")
+    scrapped_data = scrapped_data.fillna(' ')
+
+    sentiments = []
+    details = scrapped_data['Details']
+    detail = vectorizer.transform(details)
+    vectorized_item = detail.toarray()
+    prediction = loaded_model.predict(vectorized_item)
+
+    for item in prediction:
+        if item > 0:
+            overall_sentiment = "Positive"
+
+        elif item < 0:
             overall_sentiment = "Negative"
 
         else:
